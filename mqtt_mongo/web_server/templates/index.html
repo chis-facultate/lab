@@ -1,0 +1,159 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Sensor Data</title>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <style>
+        /* Prevent the page from scrolling */
+        html, body {
+            height: 100%;   /* Full height */
+            margin: 0;
+            padding: 0;
+            overflow: hidden;  /* Prevent scrolling */
+            font-family: Arial, sans-serif;
+        }
+
+        body {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center; /* Center the content vertically */
+            height: 100%;
+        }
+
+        h1 {
+            margin-bottom: 20px;
+        }
+
+        .sensor-container {
+            width: 80%;  /* Adjust width of the container */
+            margin: 20px 0;  /* Space between the charts */
+            padding: 20px;
+            border: 1px solid #ddd;
+            border-radius: 8px;
+            box-shadow: 2px 2px 8px rgba(0, 0, 0, 0.1);
+            height: 300px; /* Fix the height of the container */
+        }
+
+        .sensor-container h2 {
+            text-align: center;
+            font-size: 1.2rem;
+        }
+
+        .charts-wrapper {
+            display: block;  /* Stack charts vertically */
+            width: 100%;
+            justify-content: center;
+        }
+
+        canvas {
+            display: block;
+            margin: 0 auto;
+            height: 200px; /* Fixed height for the chart */
+            width: 100%;  /* Let the chart take up the container width */
+        }
+
+        p {
+            text-align: center;
+            font-size: 1rem;
+            margin-bottom: 10px;
+        }
+    </style>
+</head>
+<body>
+    <h1>Temperature Data Visualization</h1>
+
+    <div class="charts-wrapper">
+        <!-- Sensor 1 Chart -->
+        <div class="sensor-container">
+            <h2>Sensor 1</h2>
+            <p>Average Temperature: <span id="averageSensor1">Loading...</span> °C</p>
+            <canvas id="sensor1Chart"></canvas>
+        </div>
+
+        <!-- Sensor 2 Chart -->
+        <div class="sensor-container">
+            <h2>Sensor 2</h2>
+            <p>Average Temperature: <span id="averageSensor2">Loading...</span> °C</p>
+            <canvas id="sensor2Chart"></canvas>
+        </div>
+    </div>
+
+    <script>
+        async function fetchTemperatureData(sensor) {
+            const response = await fetch(`/temperature-data/${sensor}`);
+            const data = await response.json();
+            if (data.error) {
+                alert(data.error);
+                return [];
+            }
+            return data;
+        }
+
+        async function fetchAverageTemperature(sensor) {
+            const response = await fetch(`/average-temperature/${sensor}`);
+            const data = await response.json();
+            if (data.error) {
+                alert(data.error);
+                return null;
+            }
+            return data.average_temperature;
+        }
+
+        async function updateAverageTemperature(sensor, elementId) {
+            const averageTemperature = await fetchAverageTemperature(sensor);
+            if (averageTemperature !== null) {
+                document.getElementById(elementId).innerText = averageTemperature.toFixed(2);
+            }
+        }
+
+        async function createChart(sensor, chartId, averageId) {
+            updateAverageTemperature(sensor, averageId);
+
+            const data = await fetchTemperatureData(sensor);
+
+            const timestamps = data.map(entry => new Date(entry.timestamp * 1000).toLocaleString());
+            const temperatures = data.map(entry => entry.temperature);
+
+            const ctx = document.getElementById(chartId).getContext('2d');
+            new Chart(ctx, {
+                type: 'line',
+                data: {
+                    labels: timestamps,
+                    datasets: [{
+                        label: `Sensor ${sensor} Temperature (°C)`,
+                        data: temperatures,
+                        borderColor: 'rgba(75, 192, 192, 1)',
+                        backgroundColor: 'rgba(75, 192, 192, 0.2)',
+                        borderWidth: 2
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    scales: {
+                        x: {
+                            title: {
+                                display: true,
+                                text: 'Timestamp'
+                            }
+                        },
+                        y: {
+                            title: {
+                                display: true,
+                                text: 'Temperature (°C)'
+                            }
+                        }
+                    }
+                }
+            });
+        }
+
+        // Create charts for both sensors
+        createChart(1, 'sensor1Chart', 'averageSensor1');
+        createChart(2, 'sensor2Chart', 'averageSensor2');
+    </script>
+</body>
+</html>
